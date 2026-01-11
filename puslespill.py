@@ -23,9 +23,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_name(
 client = gspread.authorize(creds)
 sheet = client.open("Puslespill").sheet1
 
-# Existing barcodes
 existing_barcodes = set(sheet.col_values(1)[1:])
-
 UPCITEMDB_API_URL = "https://api.upcitemdb.com/prod/trial/lookup"
 
 @app.post("/scan")
@@ -49,7 +47,16 @@ async def receive_scan(data: ScanData):
         return {"status": "added", "info": "barcode_only (API unreachable)"}
     
     # Read the JSON data
-    product = response.json()["items"][0]
+    data_json = response.json()
+    items = data_json.get("items", [])
+
+    if not items:
+        sheet.append_row([barcode_number, "N/A", "N/A", "N/A", "N/A", "", "", ""],
+                        value_input_option="USER_ENTERED")
+        existing_barcodes.add(barcode_number)
+        return {"status": "added", "info": "barcode_only (not found in UPCitemdb)"}
+
+    product = items[0]
 
     title = product.get("title") or "N/A"
     brand = product.get("brand") or "N/A"
