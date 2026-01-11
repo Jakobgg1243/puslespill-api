@@ -26,6 +26,8 @@ sheet = client.open("Puslespill").sheet1
 # Existing barcodes
 existing_barcodes = set(sheet.col_values(1)[1:])
 
+UPCITEMDB_API_URL = "https://api.upcitemdb.com/prod/trial/lookup"
+
 @app.post("/scan")
 async def receive_scan(data: ScanData):
     barcode_number = data.ean.strip()
@@ -35,18 +37,19 @@ async def receive_scan(data: ScanData):
     if barcode_number in existing_barcodes:
         return {"status": "already_exists", "ean": barcode_number}
 
-    # Get product info from Barcodelookup API
-    api_url = f"https://api.barcodelookup.com/v3/products?barcode={barcode_number}&formatted=y&key={api_key}"
+    # Get product info from UPCITEMDB API
     try:
-        response = requests.get(api_url)
-    except requests.RequestException as e:
+        response = requests.get(UPCITEMDB_API_URL, params={"upc": barcode_number}, timeout=5)
+        response.raise_for_status()
+
+    except requests.RequestException:
         sheet.append_row([barcode_number, "N/A", "N/A", "N/A", "N/A", "", "", ""], 
                          value_input_option="USER_ENTERED")
         existing_barcodes.add(barcode_number)
         return {"status": "added", "info": "barcode_only (API unreachable)"}
     
     # Read the JSON data
-    product = response.json()["products"][0]
+    product = response.json()["items"][0]
 
     title = product.get("title") or "N/A"
     brand = product.get("brand") or "N/A"
