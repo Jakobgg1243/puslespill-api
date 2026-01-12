@@ -64,12 +64,8 @@ async def receive_scan(data: ScanData):
     description = product.get("description") or "N/A"
     images = product.get("images", [])[:3]
 
-    # Make image formulas for Google Sheets
-    image_formulas = [f'=IMAGE("{img}")' for img in images]
-    image_formulas  += [""] * (3 - len(image_formulas))
-
     # Add a row with the data to the Google Sheet
-    sheet.append_row([barcode_number, title, brand, manufacturer, description] + image_formulas,
+    sheet.append_row([barcode_number, title, brand, manufacturer, description] + images,
                         value_input_option="USER_ENTERED")
     existing_barcodes.add(barcode_number)
 
