@@ -73,25 +73,23 @@ async def receive_scan(data: ScanData):
 async def get_product(ean: str):
     ean = ean.strip()
 
-    try:
-        cell = sheet.find(ean)
-        row_number = cell.row
-        row_values = sheet.row_values(row_number)
-
-        product_info = {
-            "ean": row_values[0] if len(row_values) > 0 else "N/A",
-            "title": row_values[1] if len(row_values) > 1 else "N/A",
-            "brand": row_values[2] if len(row_values) > 2 else "N/A",
-            "manufacturer": row_values[3] if len(row_values) > 3 else "N/A",
-            "description": row_values[4] if len(row_values) > 4 else "N/A",
-            "images": row_values[5:8] if len(row_values) > 5 else [],
-        }
-
-        return {"status": "success", "product": product_info}
-    
-    except gspread.CellNotFound:
+    cell = sheet.find(ean)
+    if cell is None:
         return {"status": "not_found", "message": f"EAN {ean} finnes ikke i databasen"}
+    
+    row_values = sheet.row_values(cell.row)
 
+    product_info = {
+        "ean": row_values[0] if len(row_values) > 0 else "N/A",
+        "title": row_values[1] if len(row_values) > 1 else "N/A",
+        "brand": row_values[2] if len(row_values) > 2 else "N/A",
+        "manufacturer": row_values[3] if len(row_values) > 3 else "N/A",
+        "description": row_values[4] if len(row_values) > 4 else "N/A",
+        "images": row_values[5:8] if len(row_values) > 5 else [],
+    }
+
+    return {"status": "success", "product": product_info}
+    
 @app.get("/")
 def health():
     return {"status": "ok"}
