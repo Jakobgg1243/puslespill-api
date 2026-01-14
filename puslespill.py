@@ -14,8 +14,6 @@ app = FastAPI(
 class ScanData(BaseModel):
     ean: str
 
-api_key = os.environ["BARCODELOOKUP_API_KEY"]
-
 # Google Sheets setup
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(
@@ -70,6 +68,29 @@ async def receive_scan(data: ScanData):
     existing_barcodes.add(barcode_number)
 
     return {"status": "success", "ean": barcode_number, "title": title, "brand": brand}
+
+@app.get("/product/{ean}")
+async def get_product(ean: str):
+    ean = ean.strip()
+
+    try:
+        cell = sheet.find(ean)
+        row_number = cell.row
+        row_values = sheet.row_values(row_number)
+
+        product_info = {
+            "ean": row_values[0] if len(row_values) > 0 else "N/A",
+            "title": row_values[1] if len(row_values) > 1 else "N/A",
+            "brand": row_values[2] if len(row_values) > 2 else "N/A",
+            "manufacturer": row_values[3] if len(row_values) > 3 else "N/A",
+            "description": row_values[4] if len(row_values) > 4 else "N/A",
+            "images": row_values[5:8] if len(row_values) > 5 else [],
+        }
+
+        return {"status": "success", "product": product_info}
+    
+    except gspread.CellNotFound:
+        return {"status": "not_found", "message": f"EAN {ean} finnes ikke i databasen"}
 
 @app.get("/")
 def health():
